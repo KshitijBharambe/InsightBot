@@ -1,9 +1,9 @@
 import os
 import streamlit as st
 
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import pandas as pd
 import docx
@@ -11,14 +11,14 @@ from typing import Dict
 
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.chat_models import ChatOpenAI
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import Pinecone
 from langchain_community.document_loaders import DataFrameLoader
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.agents import Tool, AgentExecutor, ZeroShotAgent
-from chromadb.config import Settings
+import pinecone
 
 # Set up Streamlit page configuration
 st.set_page_config(
@@ -61,11 +61,11 @@ class UniversityRecommendationSystem:
             return ""
 
     def initialize_databases(self):
-        """Initialize ChromaDB instances with different datasets."""
+        """Initialize Pinecone instances with different datasets."""
         try:
-            chroma_settings = Settings(
-                anonymized_telemetry=False, allow_reset=True, is_persistent=True
-            )
+            # Initialize Pinecone
+            pinecone.init(api_key=st.secrets["pinecone_api_key"], environment="us-west1-gcp")
+            index_name = "university-recommendations"
 
             # Load datasets
             living_expenses_df = pd.read_csv(
@@ -93,26 +93,23 @@ class UniversityRecommendationSystem:
             # Process university data
             university_docs = self.text_splitter.create_documents([university_text])
 
-            # Create ChromaDB instances
-            self.university_db = Chroma.from_documents(
+            # Create Pinecone indexes
+            self.university_db = Pinecone.from_documents(
                 documents=university_docs,
                 embedding=self.embeddings,
-                collection_name="university_info",
-                client_settings=chroma_settings,
+                index_name=index_name + "-university",
             )
 
-            self.living_expenses_db = Chroma.from_documents(
+            self.living_expenses_db = Pinecone.from_documents(
                 documents=living_expenses_docs,
                 embedding=self.embeddings,
-                collection_name="living_expenses",
-                client_settings=chroma_settings,
+                index_name=index_name + "-living-expenses",
             )
 
-            self.employment_db = Chroma.from_documents(
+            self.employment_db = Pinecone.from_documents(
                 documents=employment_docs,
                 embedding=self.embeddings,
-                collection_name="employment_projections",
-                client_settings=chroma_settings,
+                index_name=index_name + "-employment",
             )
         except Exception as e:
             st.error(f"Error initializing databases: {str(e)}")
@@ -234,7 +231,7 @@ class UniversityRecommendationSystem:
             weather_data = self.get_weather_data(city)
             if "error" in weather_data:
                 return f"Could not fetch weather data: {weather_data['error']}"
-            return f"Current temperature: {weather_data['main']['temp']}°F, Conditions: {weather_data['weather'][0]['description']}"
+            return f"Current temperature: {weather_data['main']['temp']}\u00b0F, Conditions: {weather_data['weather'][0]['description']}"
         except Exception as e:
             return f"Error retrieving weather information: {str(e)}"
 
@@ -290,7 +287,7 @@ def initialize_recommender():
 
 def main():
     """Main Streamlit application."""
-    st.title("🎓 COMPASS - University Recommendation System")
+    st.title("\ud83c\udf93 COMPASS - University Recommendation System")
 
     # Initialize the recommender
     if not initialize_recommender():
@@ -298,7 +295,7 @@ def main():
 
     # Sidebar for user preferences
     with st.sidebar:
-        st.header("📋 Your Preferences")
+        st.header("\ud83d\udccb Your Preferences")
 
         # Initialize default preferences
         default_preferences = {
@@ -362,7 +359,7 @@ def main():
             ),
         )
 
-        if st.button("💾 Save Preferences"):
+        if st.button("\ud83d\udcbe Save Preferences"):
             user_prefs = {
                 "field_of_study": field_of_study,
                 "budget_min": budget_range[0],
@@ -374,20 +371,20 @@ def main():
             # Update session state
             st.session_state.user_preferences = user_prefs
             st.session_state.preferences_set = True
-            st.success("✅ Preferences saved successfully!")
+            st.success("\u2705 Preferences saved successfully!")
 
     # Main chat interface
-    st.header("💬 Chat with COMPASS")
+    st.header("\ud83d\udcac Chat with COMPASS")
 
     if not st.session_state.preferences_set:
         st.warning(
-            "👋 Please set your preferences in the sidebar before starting the conversation. "
+            "\ud83d\udc4b Please set your preferences in the sidebar before starting the conversation. "
             "This will help me provide more personalized recommendations!"
         )
         return
 
     # Clear chat button
-    if st.button("🗑️ Clear Chat", key="clear_chat"):
+    if st.button("\ud83d\uddd1\ufe0f Clear Chat", key="clear_chat"):
         st.session_state.chat_history = []
         st.rerun()
 

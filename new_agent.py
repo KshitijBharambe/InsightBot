@@ -328,40 +328,39 @@ def initialize_chromadb():
     """Initialize ChromaDB with OpenAI embeddings."""
     global university_collection, living_expenses_collection, employment_collection
     global chroma_client, embedding_function
-    
+
     try:
         # Setup OpenAI embedding function
         embedding_function = embedding_functions.OpenAIEmbeddingFunction(
             api_key=st.secrets["open-key"],
             model_name="text-embedding-ada-002"
         )
-        
-        # Connect to existing ChromaDB instance using PersistentClient
+
+        # Connect to ChromaDB instance
         chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        
-        # Get existing collections
-        university_collection = chroma_client.get_collection(
+
+        # Create or get collections
+        university_collection = chroma_client.get_or_create_collection(
             name="university_info",
             embedding_function=embedding_function
         )
-        
-        living_expenses_collection = chroma_client.get_collection(
+        living_expenses_collection = chroma_client.get_or_create_collection(
             name="living_expenses",
             embedding_function=embedding_function
         )
-        
-        employment_collection = chroma_client.get_collection(
+        employment_collection = chroma_client.get_or_create_collection(
             name="employment_projections",
             embedding_function=embedding_function
         )
-        
-        logger.info("Successfully connected to existing ChromaDB")
+
+        logger.info("Successfully connected to ChromaDB collections.")
         return True
-        
+
     except Exception as e:
         logger.error(f"Error initializing ChromaDB: {str(e)}")
         st.error(f"Failed to initialize database: {str(e)}")
         return False
+
 
 def load_initial_data():
     """Load initial data into ChromaDB collections."""

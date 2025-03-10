@@ -1,4 +1,4 @@
-# InsightBoy
+# InsightBot
 Comprehensive Master’s Program Assistant for Student Success
 
 The goal of this project is to create an intelligent chatbot that assists international students, 
